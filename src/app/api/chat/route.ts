@@ -18,8 +18,13 @@ export async function POST(req: Request) {
         : ''
       : ''
 
-    // Retrieve the most relevant document chunks for this query
-    const chunks = await retrieveRelevantChunks(query)
+    // Retrieve relevant chunks when DB is available; otherwise use empty context
+    let chunks: Awaited<ReturnType<typeof retrieveRelevantChunks>> = []
+    try {
+      chunks = await retrieveRelevantChunks(query)
+    } catch {
+      // DB down or no embeddings — chat still works with general knowledge
+    }
     const context = formatContext(chunks)
 
     const result = streamText({
@@ -30,7 +35,11 @@ export async function POST(req: Request) {
 
     return result.toUIMessageStreamResponse()
   } catch (error) {
+    console.error('[api/chat]', error)
     const message = error instanceof Error ? error.message : 'Unexpected error'
-    return new Response(message, { status: 500 })
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 }

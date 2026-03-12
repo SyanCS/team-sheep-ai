@@ -1,22 +1,57 @@
+import { readFileSync } from "fs";
+import path from "path";
+
+export interface PromptConfig {
+  metadata?: { app?: string; version?: string; category?: string };
+  task: string;
+  role: string;
+  instructions: string[];
+  constraints: { language?: string; tone?: string; format?: string };
+  context_rules?: {
+    use_only_provided_context?: boolean;
+    prefer_context_when_relevant?: boolean;
+    cite_sources_from_context?: boolean;
+    indicate_if_insufficient_context?: boolean;
+  };
+}
+
+let cachedConfig: PromptConfig | null = null;
+let cachedTemplate: string | null = null;
+
+function getPromptsDir(): string {
+  return path.join(process.cwd(), "prompts");
+}
+
+function loadConfig(): PromptConfig {
+  if (cachedConfig) return cachedConfig;
+  const filePath = path.join(getPromptsDir(), "answerPrompt.json");
+  const raw = readFileSync(filePath, "utf-8");
+  cachedConfig = JSON.parse(raw) as PromptConfig;
+  return cachedConfig;
+}
+
+function loadTemplate(): string {
+  if (cachedTemplate) return cachedTemplate;
+  const filePath = path.join(getPromptsDir(), "template.txt");
+  cachedTemplate = readFileSync(filePath, "utf-8");
+  return cachedTemplate;
+}
+
 export function buildSystemPrompt(context: string): string {
-  return `You are Team Sheep AI, an expert fitness assistant specializing in workouts, training programs, and nutrition.
+  const config = loadConfig();
+  const template = loadTemplate();
 
-## Your Role
-- Answer questions exclusively about fitness, exercise, workout planning, muscle groups, recovery, and diet/nutrition
-- If a question is outside these topics, politely redirect the user back to fitness subjects
-- Be encouraging, precise, and science-based in your answers
+  const instructions = config.instructions
+    .map((i) => `- ${i}`)
+    .join("\n");
+  const tone = config.constraints.tone ?? "professional";
+  const format = config.constraints.format ?? "clear text";
 
-## Knowledge Base Context
-The following excerpts are from documents uploaded by your team. Prioritize this information when answering — it reflects the team's specific programs, philosophy, and guidelines.
-
-<context>
-${context}
-</context>
-
-## Response Guidelines
-- If the context contains a relevant answer, use it and cite the source (e.g. "According to [document name]...")
-- If the context is not relevant to the question, answer from your general fitness knowledge and note that no specific document was found on the topic
-- Keep responses clear and structured — use bullet points or numbered lists for multi-step instructions
-- For workout plans, always include sets, reps, and rest periods
-- For nutrition advice, always include practical portion guidance`
+  return template
+    .replace(/\{role\}/g, config.role)
+    .replace(/\{task\}/g, config.task)
+    .replace(/\{instructions\}/g, instructions)
+    .replace(/\{tone\}/g, tone)
+    .replace(/\{format\}/g, format)
+    .replace(/\{context\}/g, context.trim() || "(No relevant excerpts from uploaded documents.)");
 }

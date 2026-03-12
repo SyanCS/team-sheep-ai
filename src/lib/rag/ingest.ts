@@ -1,8 +1,25 @@
-import pdfParse from 'pdf-parse'
+import { createRequire } from 'node:module'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { PDFParse } from 'pdf-parse'
 import { db } from '@/lib/db'
 import { documentChunks, documents } from '@/lib/db/schema'
 import { chunkText } from './chunker'
 import { embedMany } from './embeddings'
+
+// pdfjs-dist (used by pdf-parse) loads a worker via dynamic import; when bundled by Next.js
+// the default path resolves to .next and fails. Set the worker to the real file in node_modules.
+function setPdfWorker() {
+  try {
+    const require = createRequire(import.meta.url)
+    const resolved = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')
+    PDFParse.setWorker(pathToFileURL(resolved).href)
+  } catch {
+    const cwdPath = join(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs')
+    PDFParse.setWorker(pathToFileURL(cwdPath).href)
+  }
+}
+setPdfWorker()
 
 /**
  * Full ingestion pipeline:
@@ -52,8 +69,13 @@ export async function ingestDocument(
 
 async function parseFile(buffer: Buffer, mimeType: string): Promise<string> {
   if (mimeType === 'application/pdf') {
-    const data = await pdfParse(buffer)
-    return data.text
+    const parser = new PDFParse({ data: buffer })
+    try {
+      const result = await parser.getText()
+      return result.text
+    } finally {
+      await parser.destroy()
+    }
   }
 
   if (mimeType === 'text/plain' || mimeType === 'text/markdown') {

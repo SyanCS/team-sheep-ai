@@ -1,24 +1,29 @@
 import { desc } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { documents } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema'
 import { DocumentList } from '@/components/knowledge/DocumentList'
 import { DocumentUpload } from '@/components/knowledge/DocumentUpload'
 
-// This is a Server Component — it queries the database directly,
-// no API call needed. When router.refresh() is called from a client
-// component, Next.js re-runs this function to get fresh data.
-async function getDocuments() {
-  return db
-    .select()
-    .from(documents)
-    .orderBy(desc(documents.createdAt))
+// This is a Server Component — it queries the database directly.
+// If the DB is unavailable (e.g. Docker not running), we show an empty list
+// so the page still loads instead of 500.
+async function getDocuments(): Promise<Document[]> {
+  try {
+    return await db
+      .select()
+      .from(documents)
+      .orderBy(desc(documents.createdAt))
+  } catch {
+    return []
+  }
 }
 
 export default async function KnowledgePage() {
   const docs = await getDocuments()
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-2xl mx-auto space-y-8 px-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Knowledge Base</h1>
         <p className="text-muted-foreground mt-1 text-sm">

@@ -1,9 +1,8 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // @xenova/transformers uses native Node.js modules (onnxruntime-node)
-  // that must not be bundled by webpack — they load as external binaries.
-  serverExternalPackages: ['@xenova/transformers', 'sharp'],
+  // Don't bundle these — they rely on dynamic worker paths that break when bundled.
+  serverExternalPackages: ['@xenova/transformers', 'sharp', 'pdf-parse', 'pdfjs-dist'],
 }
 
 export default nextConfig
