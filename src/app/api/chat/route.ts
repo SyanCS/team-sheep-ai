@@ -33,7 +33,23 @@ export async function POST(req: Request) {
       messages: await convertToModelMessages(messages),
     })
 
-    return result.toUIMessageStreamResponse()
+    return result.toUIMessageStreamResponse({
+      getErrorMessage(error) {
+        const msg = error instanceof Error ? error.message : String(error)
+
+        if (msg.includes('rate-limit') || msg.includes('rate_limit') || msg.includes('429')) {
+          return 'The AI model is temporarily rate-limited. Please wait a moment and try again.'
+        }
+        if (msg.includes('timeout') || msg.includes('timed out')) {
+          return 'The request timed out. Please try again.'
+        }
+        if (msg.includes('context length') || msg.includes('token')) {
+          return 'Your conversation is too long. Please start a new chat.'
+        }
+
+        return 'Something went wrong while generating a response. Please try again.'
+      },
+    })
   } catch (error) {
     console.error('[api/chat]', error)
     const message = error instanceof Error ? error.message : 'Unexpected error'

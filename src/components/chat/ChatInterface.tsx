@@ -10,7 +10,7 @@ export function ChatInterface() {
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const { messages, sendMessage, status, stop } = useChat({
+  const { messages, sendMessage, status, stop, error } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
   })
 
@@ -19,7 +19,7 @@ export function ChatInterface() {
   // Auto-scroll to bottom whenever messages change or tokens stream in
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, status])
+  }, [messages, status, error])
 
   function handleSubmit() {
     if (!input.trim() || isStreaming) return
@@ -31,7 +31,11 @@ export function ChatInterface() {
     <div className="flex flex-col flex-1 min-h-0">
       {/* Scrollable message area */}
       <div className="flex-1 overflow-y-auto pr-1">
-        <MessageList messages={messages} isStreaming={status === 'submitted'} />
+        <MessageList
+          messages={messages}
+          isStreaming={status === 'submitted'}
+          error={error}
+        />
         <div ref={bottomRef} />
       </div>
 
