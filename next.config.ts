@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     '@huggingface/transformers',
     '@langchain/community',
     'langchain',
+    'pdf-parse',
     'pdfjs-dist',
     'sharp',
   ],
