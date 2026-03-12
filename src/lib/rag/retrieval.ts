@@ -1,7 +1,4 @@
-import { cosineDistance, desc, gt, sql } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { documentChunks, documents } from '@/lib/db/schema'
-import { embedText } from './embeddings'
+import { getVectorStore } from './vectorStore'
 
 export interface RetrievedChunk {
   content: string
@@ -11,39 +8,28 @@ export interface RetrievedChunk {
 }
 
 /**
- * Finds the most semantically relevant chunks for a given query.
+ * Finds the most semantically relevant chunks for a query.
  *
- * Flow:
- * 1. Embed the query using the same model used during ingestion
- * 2. Use pgvector's cosine distance operator (<=> ) to rank all stored chunks
- * 3. Return the top-k results above a minimum similarity threshold
+ * Uses PGVectorStore.similaritySearchWithScore (cosine similarity):
+ * score closer to 1 = more similar, score closer to 0 = less similar.
  */
 export async function retrieveRelevantChunks(
   query: string,
   topK = 5,
   minSimilarity = 0.3
 ): Promise<RetrievedChunk[]> {
-  const queryEmbedding = await embedText(query)
+  const vectorStore = await getVectorStore()
 
-  // `1 - cosineDistance` converts distance (0=identical, 2=opposite)
-  // into similarity (1=identical, -1=opposite). Values above 0.3 are
-  // generally considered semantically related for MiniLM.
-  const similarity = sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryEmbedding)})`
+  const results = await vectorStore.similaritySearchWithScore(query, topK)
 
-  const rows = await db
-    .select({
-      content: documentChunks.content,
-      similarity,
-      documentName: documents.name,
-      chunkIndex: documentChunks.chunkIndex,
-    })
-    .from(documentChunks)
-    .innerJoin(documents, sql`${documentChunks.documentId} = ${documents.id}`)
-    .where(gt(similarity, minSimilarity))
-    .orderBy(desc(similarity))
-    .limit(topK)
-
-  return rows
+  return results
+    .filter(([, score]) => score >= minSimilarity)
+    .map(([doc, score]) => ({
+      content: doc.pageContent,
+      similarity: score,
+      documentName: (doc.metadata.documentName as string) ?? 'Unknown',
+      chunkIndex: (doc.metadata.chunkIndex as number) ?? 0,
+    }))
 }
 
 /**
@@ -56,9 +42,6 @@ export function formatContext(chunks: RetrievedChunk[]): string {
   }
 
   return chunks
-    .map(
-      (chunk, i) =>
-        `[Source ${i + 1}: ${chunk.documentName}]\n${chunk.content}`
-    )
+    .map((chunk, i) => `[Source ${i + 1}: ${chunk.documentName}]\n${chunk.content}`)
     .join('\n\n---\n\n')
 }
