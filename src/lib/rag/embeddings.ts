@@ -6,7 +6,7 @@ let embeddingsInstance: HuggingFaceTransformersEmbeddings | null = null
 export function getEmbeddings(): HuggingFaceTransformersEmbeddings {
   if (!embeddingsInstance) {
     embeddingsInstance = new HuggingFaceTransformersEmbeddings({
-      model: 'Xenova/all-MiniLM-L6-v2',
+      model: process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2',
     })
   }
   return embeddingsInstance
