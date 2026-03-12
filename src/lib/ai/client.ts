@@ -7,5 +7,6 @@ const openrouter = createOpenRouter({
   },
 })
 
-// Free tier model — 131K context window, strong reasoning
-export const chatModel = openrouter('meta-llama/llama-3.3-70b-instruct:free')
+const model = process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free'
+
+export const chatModel = openrouter(model)
