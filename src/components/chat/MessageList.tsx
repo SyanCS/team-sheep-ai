@@ -1,0 +1,89 @@
+import type { UIMessage } from 'ai'
+
+interface MessageListProps {
+  messages: UIMessage[]
+  isStreaming: boolean
+}
+
+export function MessageList({ messages, isStreaming }: MessageListProps) {
+  if (messages.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-muted-foreground">
+        <DumbbellIcon className="size-10 opacity-30" />
+        <div>
+          <p className="font-medium text-foreground">Ask Team Sheep AI</p>
+          <p className="text-sm mt-1">
+            Ask about workouts, training plans, nutrition, or recovery.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-6 py-4">
+      {messages.map((message) => (
+        <div
+          key={message.id}
+          className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+        >
+          {message.role === 'assistant' && (
+            <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <DumbbellIcon className="size-3.5 text-primary" />
+            </div>
+          )}
+
+          <div
+            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+              message.role === 'user'
+                ? 'bg-primary text-primary-foreground rounded-br-sm'
+                : 'bg-muted text-foreground rounded-bl-sm'
+            }`}
+          >
+            {message.parts.map((part, i) => {
+              if (part.type === 'text') {
+                return <span key={i}>{part.text}</span>
+              }
+              return null
+            })}
+          </div>
+
+          {message.role === 'user' && (
+            <div className="size-7 rounded-full bg-secondary flex items-center justify-center shrink-0 mt-0.5">
+              <UserIcon className="size-3.5 text-secondary-foreground" />
+            </div>
+          )}
+        </div>
+      ))}
+
+      {isStreaming && (
+        <div className="flex gap-3 justify-start">
+          <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <DumbbellIcon className="size-3.5 text-primary" />
+          </div>
+          <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1 items-center">
+            <span className="size-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
+            <span className="size-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
+            <span className="size-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DumbbellIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v9.75h-.75a2.25 2.25 0 0 1-2.25-2.25v-5.25a2.25 2.25 0 0 1 2.25-2.25ZM17.25 6.75h-.75v9.75h.75a2.25 2.25 0 0 0 2.25-2.25v-5.25a2.25 2.25 0 0 0-2.25-2.25ZM9 6.75h6v10.5H9V6.75Z" />
+    </svg>
+  )
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+    </svg>
+  )
+}

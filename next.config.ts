@@ -1,7 +1,9 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  // @xenova/transformers uses native Node.js modules (onnxruntime-node)
+  // that must not be bundled by webpack — they load as external binaries.
+  serverExternalPackages: ['@xenova/transformers', 'sharp'],
+}
 
-export default nextConfig;
+export default nextConfig
