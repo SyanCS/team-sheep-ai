@@ -3,28 +3,26 @@ import { chatModel } from '@/lib/ai/client'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
 import { formatContext, retrieveRelevantChunks } from '@/lib/rag/retrieval'
 
-// Allow streaming responses up to 60 seconds
 export const maxDuration = 60
 
 export async function POST(req: Request) {
   try {
     const { messages }: { messages: UIMessage[] } = await req.json()
 
-    // Extract the latest user message to use as the retrieval query
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
-    const query = lastUserMessage
-      ? typeof lastUserMessage.content === 'string'
-        ? lastUserMessage.content
-        : ''
-      : ''
+    const query =
+      lastUserMessage?.parts
+        .filter((p) => p.type === 'text')
+        .map((p) => (p.type === 'text' ? p.text : ''))
+        .join(' ') ?? ''
 
-    // Retrieve relevant chunks when DB is available; otherwise use empty context
     let chunks: Awaited<ReturnType<typeof retrieveRelevantChunks>> = []
     try {
       chunks = await retrieveRelevantChunks(query)
     } catch {
-      // DB down or no embeddings — chat still works with general knowledge
+      // DB down — chat still works with general knowledge
     }
+
     const context = formatContext(chunks)
 
     const result = streamText({
@@ -34,10 +32,9 @@ export async function POST(req: Request) {
     })
 
     return result.toUIMessageStreamResponse({
-      getErrorMessage(error) {
+      onError(error: unknown) {
         const msg = error instanceof Error ? error.message : String(error)
-
-        if (msg.includes('rate-limit') || msg.includes('rate_limit') || msg.includes('429')) {
+        if (msg.includes('rate-limit') || msg.includes('rate_limit') || msg.includes('429') || msg.includes('rate-limited')) {
           return 'The AI model is temporarily rate-limited. Please wait a moment and try again.'
         }
         if (msg.includes('timeout') || msg.includes('timed out')) {
@@ -46,7 +43,6 @@ export async function POST(req: Request) {
         if (msg.includes('context length') || msg.includes('token')) {
           return 'Your conversation is too long. Please start a new chat.'
         }
-
         return 'Something went wrong while generating a response. Please try again.'
       },
     })

@@ -1,4 +1,8 @@
+'use client'
+
 import type { UIMessage } from 'ai'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface MessageListProps {
   messages: UIMessage[]
@@ -35,18 +39,29 @@ export function MessageList({ messages, isStreaming, error }: MessageListProps) 
           )}
 
           <div
-            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
               message.role === 'user'
                 ? 'bg-primary text-primary-foreground rounded-br-sm'
                 : 'bg-muted text-foreground rounded-bl-sm'
             }`}
           >
-            {message.parts.map((part, i) => {
-              if (part.type === 'text') {
-                return <span key={i}>{part.text}</span>
-              }
-              return null
-            })}
+            {message.role === 'user' ? (
+              <span>
+                {message.parts.map((part, i) =>
+                  part.type === 'text' ? <span key={i}>{part.text}</span> : null
+                )}
+              </span>
+            ) : (
+              <div>
+                {message.parts.map((part, i) =>
+                  part.type === 'text' ? (
+                    <ReactMarkdown key={i} remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      {part.text}
+                    </ReactMarkdown>
+                  ) : null
+                )}
+              </div>
+            )}
           </div>
 
           {message.role === 'user' && (
@@ -86,17 +101,47 @@ export function MessageList({ messages, isStreaming, error }: MessageListProps) 
   )
 }
 
+// Tailwind-styled markdown component overrides
+const markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components'] = {
+  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  em: ({ children }) => <em className="italic">{children}</em>,
+  ul: ({ children }) => <ul className="list-disc list-outside ml-4 mb-2 space-y-0.5">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal list-outside ml-4 mb-2 space-y-0.5">{children}</ol>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  h1: ({ children }) => <h1 className="text-base font-bold mb-1 mt-2">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-sm font-bold mb-1 mt-2">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-sm font-semibold mb-1 mt-2">{children}</h3>,
+  code: ({ children }) => (
+    <code className="bg-background/60 rounded px-1 py-0.5 font-mono text-xs">{children}</code>
+  ),
+  pre: ({ children }) => (
+    <pre className="bg-background/60 rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono">{children}</pre>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-muted-foreground/30 pl-3 italic text-muted-foreground my-2">{children}</blockquote>
+  ),
+  table: ({ children }) => (
+    <div className="overflow-x-auto my-2">
+      <table className="text-xs border-collapse w-full">{children}</table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th className="border border-border px-2 py-1 bg-background/40 font-semibold text-left">{children}</th>
+  ),
+  td: ({ children }) => (
+    <td className="border border-border px-2 py-1">{children}</td>
+  ),
+  hr: () => <hr className="border-muted-foreground/20 my-2" />,
+}
+
 function friendlyError(error: Error): string {
   const msg = error.message ?? ''
   if (msg.includes('rate-limit') || msg.includes('rate_limit') || msg.includes('429') || msg.includes('rate-limited')) {
     return 'The AI model is temporarily rate-limited. Please wait a moment and try again.'
   }
-  if (msg.includes('timeout') || msg.includes('timed out')) {
-    return 'The request timed out. Please try again.'
-  }
-  if (msg.includes('context length') || msg.includes('token')) {
-    return 'Your conversation is too long. Please start a new chat.'
-  }
+  if (msg.includes('timeout') || msg.includes('timed out')) return 'The request timed out. Please try again.'
+  if (msg.includes('context length') || msg.includes('token')) return 'Your conversation is too long. Please start a new chat.'
   if (msg) return msg
   return 'An unexpected error occurred. Please try again.'
 }
@@ -124,3 +169,4 @@ function AlertIcon({ className }: { className?: string }) {
     </svg>
   )
 }
+
