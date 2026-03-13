@@ -1,3 +1,5 @@
+<img src="logo.png" alt="Team Sheep AI" width="80" />
+
 # Team Sheep AI
 
 A fitness assistant chatbot with **Retrieval-Augmented Generation (RAG)**. Upload your own workout plans, training programs, or nutrition guides and the assistant will ground its answers in your documents — citing the source inline.
@@ -6,8 +8,15 @@ Built with **Next.js 16**, **LangChain**, **PostgreSQL + pgvector**, and the **V
 
 ---
 
+## Demo
+
+[▶ Watch the demo](https://drive.google.com/file/d/1qf3og-05JdqxOc4I3nAv42vFPR213r8O/view?usp=sharing)
+
+---
+
 ## Table of Contents
 
+- [Demo](#demo)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
