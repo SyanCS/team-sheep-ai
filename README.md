@@ -10,7 +10,7 @@ Built with **Next.js 16**, **LangChain**, **PostgreSQL + pgvector**, and the **V
 
 ## Demo
 
-[▶ Watch the demo](https://drive.google.com/file/d/1qf3og-05JdqxOc4I3nAv42vFPR213r8O/view?usp=sharing)
+[▶ Watch the demo](https://docs.google.com/videos/d/1tqTX8KsA4yKlQswL8qvOTTV-50qEJPH17L2VcqV8dZc/edit?usp=sharing)
 
 ---
 
