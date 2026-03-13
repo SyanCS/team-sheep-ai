@@ -15,7 +15,7 @@ export async function DELETE(req: Request) {
       sql`DELETE FROM langchain_chunks WHERE metadata->>'documentId' = ${id}`
     )
 
-    // Remove document metadata (document_chunks are also cleaned up via CASCADE if still present)
+    // Remove document metadata row
     await db.delete(documents).where(eq(documents.id, id))
 
     return Response.json({ success: true })

@@ -1,6 +1,7 @@
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters'
 import { Document } from '@langchain/core/documents'
+import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { documents } from '@/lib/db/schema'
 import { getVectorStore } from './vectorStore'
@@ -48,7 +49,8 @@ export async function ingestDocument(
     .values({ name: fileName, fileType: mimeType, sizeBytes: buffer.length })
     .returning({ id: documents.id })
 
-  // Step 4 — Attach metadata and store in vector store
+  // Step 4 — Attach metadata and store in vector store.
+  // Roll back the document record if embedding fails to avoid orphaned rows.
   const docsWithMeta = chunks.map((chunk, i) =>
     new Document({
       pageContent: chunk.pageContent,
@@ -60,8 +62,13 @@ export async function ingestDocument(
     })
   )
 
-  const vectorStore = await getVectorStore()
-  await vectorStore.addDocuments(docsWithMeta)
+  try {
+    const vectorStore = await getVectorStore()
+    await vectorStore.addDocuments(docsWithMeta)
+  } catch (err) {
+    await db.delete(documents).where(eq(documents.id, doc.id))
+    throw err
+  }
 
   return { documentId: doc.id, chunkCount: chunks.length }
 }

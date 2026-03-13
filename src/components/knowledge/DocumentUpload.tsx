@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
-type UploadStatus = 'idle' | 'uploading' | 'success' | 'error'
+type UploadStatus = 'idle' | 'uploading' | 'processing' | 'success' | 'error'
 
 export function DocumentUpload() {
   const router = useRouter()
@@ -12,31 +12,54 @@ export function DocumentUpload() {
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<UploadStatus>('idle')
   const [message, setMessage] = useState('')
+  const [uploadProgress, setUploadProgress] = useState(0)
 
-  async function uploadFile(file: File) {
+  function uploadFile(file: File) {
     setStatus('uploading')
+    setUploadProgress(0)
     setMessage('')
 
     const formData = new FormData()
     formData.append('file', file)
 
-    try {
-      const res = await fetch('/api/knowledge/upload', { method: 'POST', body: formData })
-      const data = await res.json()
+    const xhr = new XMLHttpRequest()
 
-      if (!res.ok) {
-        setStatus('error')
-        setMessage(data.error ?? 'Upload failed.')
-        return
+    // Track how much of the file has been sent to the server.
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        setUploadProgress(Math.round((e.loaded / e.total) * 100))
       }
+    }
 
-      setStatus('success')
-      setMessage(`"${file.name}" ingested — ${data.chunkCount} chunks stored.`)
-      router.refresh() // re-runs the Server Component to refresh the document list
-    } catch {
+    // Transfer complete — server is now parsing + embedding the document.
+    xhr.upload.onload = () => {
+      setStatus('processing')
+    }
+
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText)
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setStatus('success')
+          setMessage(`"${file.name}" ingested — ${data.chunkCount} chunks stored.`)
+          router.refresh()
+        } else {
+          setStatus('error')
+          setMessage(data.error ?? 'Upload failed.')
+        }
+      } catch {
+        setStatus('error')
+        setMessage('Unexpected server response.')
+      }
+    }
+
+    xhr.onerror = () => {
       setStatus('error')
       setMessage('Network error. Please try again.')
     }
+
+    xhr.open('POST', '/api/knowledge/upload')
+    xhr.send(formData)
   }
 
   function handleFiles(files: FileList | null) {
@@ -60,7 +83,7 @@ export function DocumentUpload() {
     handleFiles(e.dataTransfer.files)
   }
 
-  const isUploading = status === 'uploading'
+  const isBusy = status === 'uploading' || status === 'processing'
 
   return (
     <div className="space-y-3">
@@ -68,11 +91,11 @@ export function DocumentUpload() {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={() => !isUploading && inputRef.current?.click()}
+        onClick={() => !isBusy && inputRef.current?.click()}
         className={`
           border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer
           ${isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-accent/40'}
-          ${isUploading ? 'opacity-60 pointer-events-none' : ''}
+          ${isBusy ? 'opacity-60 pointer-events-none' : ''}
         `}
       >
         <input
@@ -84,8 +107,10 @@ export function DocumentUpload() {
         />
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
           <UploadIcon className="size-10 opacity-40" />
-          {isUploading ? (
-            <p className="text-sm font-medium">Processing document...</p>
+          {isBusy ? (
+            <p className="text-sm font-medium">
+              {status === 'uploading' ? 'Uploading…' : 'Embedding document…'}
+            </p>
           ) : (
             <>
               <p className="text-sm font-medium">Drop a file here or click to browse</p>
@@ -95,28 +120,42 @@ export function DocumentUpload() {
         </div>
       </div>
 
-      {status !== 'idle' && (
+      {/* Progress bar — shown during upload and server-side processing */}
+      {isBusy && (
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          {status === 'uploading' ? (
+            // Determinate: tracks actual bytes sent
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-150"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          ) : (
+            // Indeterminate: server is chunking + embedding
+            <div className="h-full bg-primary rounded-full w-1/3 animate-[slide_1.4s_ease-in-out_infinite]" />
+          )}
+        </div>
+      )}
+
+      {status !== 'idle' && !isBusy && (
         <div
           className={`text-sm px-4 py-2.5 rounded-lg ${
             status === 'success'
               ? 'bg-green-50 text-green-700 border border-green-200'
-              : status === 'error'
-              ? 'bg-red-50 text-red-700 border border-red-200'
-              : 'bg-muted text-muted-foreground'
+              : 'bg-red-50 text-red-700 border border-red-200'
           }`}
         >
-          {message || 'Uploading...'}
+          {message}
         </div>
       )}
 
       <Button
         variant="outline"
         size="sm"
-        disabled={isUploading}
+        disabled={isBusy}
         onClick={() => inputRef.current?.click()}
         className="w-full"
       >
-        {isUploading ? 'Uploading…' : 'Select file'}
+        {isBusy ? (status === 'uploading' ? 'Uploading…' : 'Processing…') : 'Select file'}
       </Button>
     </div>
   )

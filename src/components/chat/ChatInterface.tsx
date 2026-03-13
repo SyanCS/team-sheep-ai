@@ -16,6 +16,17 @@ export function ChatInterface() {
 
   const isStreaming = status === 'streaming' || status === 'submitted'
 
+  // Show the typing indicator while waiting for a response, and keep it
+  // visible during early streaming if the assistant message has no text yet
+  // (source-document chunks arrive before text, which flips status to
+  // 'streaming' immediately, causing the dots to vanish before text appears).
+  const lastMessage = messages.at(-1)
+  const assistantHasText =
+    lastMessage?.role === 'assistant' &&
+    lastMessage.parts.some((p) => p.type === 'text' && p.text.length > 0)
+  const showTypingIndicator =
+    status === 'submitted' || (status === 'streaming' && !assistantHasText)
+
   // Auto-scroll to bottom whenever messages change or tokens stream in
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -33,7 +44,7 @@ export function ChatInterface() {
       <div className="flex-1 overflow-y-auto pr-1">
         <MessageList
           messages={messages}
-          isStreaming={status === 'submitted'}
+          isStreaming={showTypingIndicator}
           error={error}
         />
         <div ref={bottomRef} />

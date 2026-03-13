@@ -21,11 +21,5 @@
     "language": "Same as the user's question, or English if unclear",
     "tone": "encouraging and professional",
     "format": "Clear text with structure (bullets or lists) when helpful"
-  },
-  "context_rules": {
-    "use_only_provided_context": false,
-    "prefer_context_when_relevant": true,
-    "cite_sources_from_context": true,
-    "indicate_if_insufficient_context": true
   }
 }

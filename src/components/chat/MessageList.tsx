@@ -27,7 +27,12 @@ export function MessageList({ messages, isStreaming, error }: MessageListProps) 
 
   return (
     <div className="flex flex-col gap-6 py-4">
-      {messages.map((message) => (
+      {messages.map((message, idx) => {
+        const isLastMessage = idx === messages.length - 1
+        const hasNoText = !message.parts.some((p) => p.type === 'text' && p.text.length > 0)
+        if (isStreaming && isLastMessage && message.role === 'assistant' && hasNoText) return null
+
+        return (
         <div
           key={message.id}
           className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -38,30 +43,53 @@ export function MessageList({ messages, isStreaming, error }: MessageListProps) 
             </div>
           )}
 
-          <div
-            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-              message.role === 'user'
-                ? 'bg-primary text-primary-foreground rounded-br-sm'
-                : 'bg-muted text-foreground rounded-bl-sm'
-            }`}
-          >
-            {message.role === 'user' ? (
-              <span>
-                {message.parts.map((part, i) =>
-                  part.type === 'text' ? <span key={i}>{part.text}</span> : null
-                )}
-              </span>
-            ) : (
-              <div>
-                {message.parts.map((part, i) =>
-                  part.type === 'text' ? (
-                    <ReactMarkdown key={i} remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                      {part.text}
-                    </ReactMarkdown>
-                  ) : null
-                )}
-              </div>
-            )}
+          <div className="flex flex-col gap-1.5 max-w-[80%]">
+            <div
+              className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                message.role === 'user'
+                  ? 'bg-primary text-primary-foreground rounded-br-sm'
+                  : 'bg-muted text-foreground rounded-bl-sm'
+              }`}
+            >
+              {message.role === 'user' ? (
+                <span>
+                  {message.parts.map((part, i) =>
+                    part.type === 'text' ? <span key={i}>{part.text}</span> : null
+                  )}
+                </span>
+              ) : (
+                <div>
+                  {message.parts.map((part, i) =>
+                    part.type === 'text' ? (
+                      <ReactMarkdown key={i} remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                        {part.text}
+                      </ReactMarkdown>
+                    ) : null
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Source citations — shown below assistant messages when RAG retrieves documents */}
+            {message.role === 'assistant' && (() => {
+              const sources = message.parts.filter((p) => p.type === 'source-document')
+              if (sources.length === 0) return null
+              return (
+                <div className="flex flex-wrap gap-1.5 px-1">
+                  {sources.map((part, i) =>
+                    part.type === 'source-document' ? (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded-full px-2.5 py-0.5"
+                      >
+                        <DocumentIcon className="size-3 shrink-0" />
+                        {part.title}
+                      </span>
+                    ) : null
+                  )}
+                </div>
+              )
+            })()}
           </div>
 
           {message.role === 'user' && (
@@ -70,7 +98,8 @@ export function MessageList({ messages, isStreaming, error }: MessageListProps) 
             </div>
           )}
         </div>
-      ))}
+        )
+      })}
 
       {isStreaming && (
         <div className="flex gap-3 justify-start">
@@ -166,6 +195,14 @@ function AlertIcon({ className }: { className?: string }) {
   return (
     <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+    </svg>
+  )
+}
+
+function DocumentIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
     </svg>
   )
 }

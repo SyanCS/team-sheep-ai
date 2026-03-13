@@ -1,13 +1,11 @@
 import { PGVectorStore, DistanceStrategy } from '@langchain/community/vectorstores/pgvector'
-import { Pool } from 'pg'
+import { pool } from '@/lib/db'
 import { getEmbeddings } from './embeddings'
 
 let vectorStorePromise: Promise<PGVectorStore> | null = null
 
 async function initVectorStore(): Promise<PGVectorStore> {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
-
-  const store = await PGVectorStore.initialize(getEmbeddings(), {
+  return PGVectorStore.initialize(getEmbeddings(), {
     pool,
     tableName: 'langchain_chunks',
     columns: {
@@ -18,17 +16,19 @@ async function initVectorStore(): Promise<PGVectorStore> {
     },
     distanceStrategy: 'cosine' as DistanceStrategy,
   })
-
-  return store
 }
 
 /**
- * Returns the shared PGVectorStore instance, initialising it (and creating
- * the underlying table) on the first call.
+ * Returns the shared PGVectorStore instance, initialising it on the first call.
+ * On failure the promise is cleared so the next call retries instead of
+ * returning a permanently-rejected promise.
  */
 export function getVectorStore(): Promise<PGVectorStore> {
   if (!vectorStorePromise) {
-    vectorStorePromise = initVectorStore()
+    vectorStorePromise = initVectorStore().catch((err) => {
+      vectorStorePromise = null
+      throw err
+    })
   }
   return vectorStorePromise
 }

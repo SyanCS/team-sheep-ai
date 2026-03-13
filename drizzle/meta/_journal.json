@@ -8,6 +8,13 @@
       "when": 1773279917105,
       "tag": "0000_stiff_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1741824000000,
+      "tag": "0001_drop_document_chunks",
+      "breakpoints": true
     }
   ]
 }
