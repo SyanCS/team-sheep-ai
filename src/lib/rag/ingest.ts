@@ -12,7 +12,7 @@ const splitter = new RecursiveCharacterTextSplitter({
 })
 
 /**
- * Full ingestion pipeline — mirrors the exemplo-embeddings-neo4j-rag flow:
+ * Full ingestion pipeline:
  * 1. Load file → LangChain Documents  (PDFLoader or plain text)
  * 2. Split      → RecursiveCharacterTextSplitter
  * 3. Persist document metadata to the `documents` table (Drizzle)
